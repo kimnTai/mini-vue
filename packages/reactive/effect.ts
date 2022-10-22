@@ -1,8 +1,13 @@
 export let activeEffect: ReactiveEffect | undefined = undefined;
 
+function cleanupEffect(effect: ReactiveEffect) {
+    effect.deps.forEach((set) => set.delete(effect));
+    effect.deps.length = 0;
+}
+
 class ReactiveEffect {
     parent = undefined;
-    deps: any[] = [];
+    deps: Set<ReactiveEffect>[] = [];
     // 默認是激活狀態
     active = true;
     constructor(public fn: () => void) {}
@@ -17,6 +22,9 @@ class ReactiveEffect {
         try {
             this.parent = activeEffect as any;
             activeEffect = this;
+
+            // 這裡我們需要在執行用戶函數之前，將之前收集的內容清空 activeEffect.deps = [(Set),(Set)]
+            cleanupEffect(this);
             return this.fn();
         } finally {
             activeEffect = this.parent;
@@ -53,18 +61,26 @@ export function track(target: any, type: "get", key: string | symbol) {
 
     if (!dep.has(activeEffect)) {
         dep.add(activeEffect);
-        // 讓 effect 記錄住對應的 dep,清理的時候會用到
+        //存放的是屬性對應的 Set，讓 effect 記錄住對應的 dep,清理的時候會用到
         activeEffect.deps.push(dep);
     }
 }
 export function trigger(target: any, type: "set", key: string | symbol) {
     const depsMap = targetMap.get(target);
-    if (!depsMap) return;
+    // 觸發的值不在模板中使用
+    if (!depsMap) {
+        return;
+    }
     const effects = depsMap.get(key);
-    if (!effects) return;
-    effects.forEach((item: ReactiveEffect) => {
+    if (!effects) {
+        return;
+    }
+    // 永遠在執行之前，先拷貝一份來執行，不要關聯引用
+    [...effects].forEach((item: ReactiveEffect) => {
         // 我們在執行 effect的時候又要執行自己，需要屏蔽，不要無限調用
-        if (item === activeEffect) return;
+        if (item === activeEffect) {
+            return;
+        }
         item.run();
     });
 }
