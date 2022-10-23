@@ -5,12 +5,12 @@ function cleanupEffect(effect: ReactiveEffect) {
     effect.deps.length = 0;
 }
 
-class ReactiveEffect {
+export class ReactiveEffect {
     parent = undefined;
     deps: Set<ReactiveEffect>[] = [];
     // 默認是激活狀態
     active = true;
-    constructor(public fn: () => void, public scheduler: Function) {}
+    constructor(public fn: () => void, public scheduler: () => void) {}
 
     // 執行 effect
     run(): void {
@@ -58,7 +58,7 @@ export function effect(fn: () => void, options: any = {}): () => void {
  * WeakMap = {物件:Map{name:Set}}
  */
 const targetMap = new WeakMap();
-export function track(target: any, type: "get", key: string | symbol) {
+export function track(target: any, type: "get", key: string | symbol): void {
     if (!activeEffect) return;
 
     let depsMap = targetMap.get(target);
@@ -71,13 +71,21 @@ export function track(target: any, type: "get", key: string | symbol) {
         depsMap.set(key, (dep = new Set()));
     }
 
+    trackEffect(dep);
+}
+
+export function trackEffect(dep: any): void {
+    if (!activeEffect) {
+        return;
+    }
     if (!dep.has(activeEffect)) {
         dep.add(activeEffect);
         //存放的是屬性對應的 Set，讓 effect 記錄住對應的 dep,清理的時候會用到
         activeEffect.deps.push(dep);
     }
 }
-export function trigger(target: any, type: "set", key: string | symbol) {
+
+export function trigger(target: any, type: "set", key: string | symbol): void {
     const depsMap = targetMap.get(target);
     // 觸發的值不在模板中使用
     if (!depsMap) {
@@ -87,6 +95,10 @@ export function trigger(target: any, type: "set", key: string | symbol) {
     if (!effects) {
         return;
     }
+    triggerEffects(effects);
+}
+
+export function triggerEffects(effects: Set<any>): void {
     // 永遠在執行之前，先拷貝一份來執行，不要關聯引用
     [...effects].forEach((effect: ReactiveEffect) => {
         // 我們在執行 effect的時候又要執行自己，需要屏蔽，不要無限調用
