@@ -30,13 +30,25 @@ class ReactiveEffect {
             activeEffect = this.parent;
         }
     }
+    stop() {
+        if (this.active) {
+            this.active = false;
+            // 停止effect的收集
+            cleanupEffect(this);
+        }
+    }
 }
 
-export function effect(fn: () => void): void {
+export function effect(fn: () => void): () => void {
     // fn 可以根據狀態變化重新執行，effect 可以嵌套著寫
     const _effect = new ReactiveEffect(fn);
     // 默認先執行一次
     _effect.run();
+    // 綁定this執行
+    const runner = _effect.run.bind(_effect);
+    // 將effect掛載到runner函數上
+    (<any>runner).effect = _effect;
+    return runner;
 }
 
 /**
