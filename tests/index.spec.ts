@@ -41,4 +41,33 @@ describe("effect", () => {
         runner();
         expect(value).toBe(2);
     });
+    it("scheduler", async () => {
+        const state = reactive({ age: 1 });
+        let value = 0;
+        let waiting = false;
+        const runner: any = effect(
+            () => {
+                value = state.age;
+            },
+            {
+                // 調度，如何更新自己決定
+                scheduler: async () => {
+                    if (waiting) {
+                        return;
+                    }
+                    waiting = true;
+                    await new Promise((r) => setTimeout(r));
+                    runner();
+                    waiting = false;
+                },
+            }
+        );
+        state.age = 2;
+        state.age = 3;
+        state.age = 4;
+        state.age = 5;
+        expect(value).toBe(1);
+        await new Promise((r) => setTimeout(r, 50));
+        expect(value).toBe(5);
+    });
 });

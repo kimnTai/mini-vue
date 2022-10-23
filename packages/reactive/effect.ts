@@ -10,7 +10,7 @@ class ReactiveEffect {
     deps: Set<ReactiveEffect>[] = [];
     // 默認是激活狀態
     active = true;
-    constructor(public fn: () => void) {}
+    constructor(public fn: () => void, public scheduler: Function) {}
 
     // 執行 effect
     run(): void {
@@ -39,9 +39,9 @@ class ReactiveEffect {
     }
 }
 
-export function effect(fn: () => void): () => void {
+export function effect(fn: () => void, options: any = {}): () => void {
     // fn 可以根據狀態變化重新執行，effect 可以嵌套著寫
-    const _effect = new ReactiveEffect(fn);
+    const _effect = new ReactiveEffect(fn, options.scheduler);
     // 默認先執行一次
     _effect.run();
     // 綁定this執行
@@ -88,11 +88,16 @@ export function trigger(target: any, type: "set", key: string | symbol) {
         return;
     }
     // 永遠在執行之前，先拷貝一份來執行，不要關聯引用
-    [...effects].forEach((item: ReactiveEffect) => {
+    [...effects].forEach((effect: ReactiveEffect) => {
         // 我們在執行 effect的時候又要執行自己，需要屏蔽，不要無限調用
-        if (item === activeEffect) {
+        if (effect === activeEffect) {
             return;
         }
-        item.run();
+        // 如果用戶傳入了調度函數
+        if (effect.scheduler) {
+            effect.scheduler();
+            return;
+        }
+        effect.run();
     });
 }
