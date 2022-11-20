@@ -1,15 +1,11 @@
-import { effect } from "@/reactive/effect";
-import { reactive } from "@/reactive/reactive";
+import { Dep, effectWatch } from "@/reactive/ref";
 
-const data = { name: "kim", age: 13 };
-const state = reactive(data);
+const a = new Dep(10);
+let b = 0;
 
-effect(() => {
-    const dom = document.querySelector("body");
-    if (!dom) return;
-    dom.innerText = `${state.name}今年${state.age}歲`;
+effectWatch(() => {
+    b = a.value + 10;
+    console.log(b);
 });
 
-setTimeout(() => {
-    state.age = 14;
-}, 1000);
+a.value = 20;
