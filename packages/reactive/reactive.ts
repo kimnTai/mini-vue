@@ -18,3 +18,10 @@ export function reactive<T extends Object>(obj: T): T {
     reactiveMap.set(obj, proxy);
     return proxy;
 }
+
+export function toReactive(value: any) {
+    if (typeof value === "object") {
+        return reactive(value);
+    }
+    return value;
+}

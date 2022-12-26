@@ -1,5 +1,9 @@
 export let activeEffect: ReactiveEffect | undefined = undefined;
 
+export function isTracking() {
+    return activeEffect !== undefined;
+}
+
 function cleanupEffect(effect: ReactiveEffect) {
     effect.deps.forEach((set) => set.delete(effect));
     effect.deps.length = 0;
@@ -45,9 +49,9 @@ export function effect(fn: () => void, options: any = {}): () => void {
     // 默認先執行一次
     _effect.run();
     // 綁定this執行
-    const runner = _effect.run.bind(_effect);
+    const runner: any = _effect.run.bind(_effect);
     // 將effect掛載到runner函數上
-    (<any>runner).effect = _effect;
+    runner.effect = _effect;
     return runner;
 }
 
@@ -59,29 +63,25 @@ export function effect(fn: () => void, options: any = {}): () => void {
  */
 const targetMap = new WeakMap();
 export function track(target: any, type: "get", key: string | symbol): void {
-    if (!activeEffect) return;
-
+    if (!isTracking()) {
+        return;
+    }
     let depsMap = targetMap.get(target);
     if (!depsMap) {
         targetMap.set(target, (depsMap = new Map()));
     }
-
     let dep = depsMap.get(key);
     if (!dep) {
         depsMap.set(key, (dep = new Set()));
     }
-
-    trackEffect(dep);
+    trackEffects(dep);
 }
 
-export function trackEffect(dep: any): void {
-    if (!activeEffect) {
-        return;
-    }
+export function trackEffects(dep: any): void {
     if (!dep.has(activeEffect)) {
         dep.add(activeEffect);
         //存放的是屬性對應的 Set，讓 effect 記錄住對應的 dep,清理的時候會用到
-        activeEffect.deps.push(dep);
+        activeEffect!.deps.push(dep);
     }
 }
 

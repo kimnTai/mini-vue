@@ -1,11 +1,12 @@
-import { Dep, effectWatch } from "@/reactive/ref";
+import { effect } from "@/reactive/effect";
+import ref from "@/reactive/ref";
 
-const a = new Dep(10);
-let b = 0;
+const a = ref(1);
+let dummy;
+let calls = 0;
+effect(() => {
+    calls++;
 
-effectWatch(() => {
-    b = a.value + 10;
-    console.log(b);
+    console.log(a.value);
+    dummy = a.value;
 });
-
-a.value = 20;

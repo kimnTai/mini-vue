@@ -1,4 +1,4 @@
-import { ReactiveEffect, trackEffect, triggerEffects } from "./effect";
+import { isTracking, ReactiveEffect, trackEffects, triggerEffects } from "./effect";
 
 class ComputedRefImpl {
     public effect: ReactiveEffect;
@@ -22,8 +22,10 @@ class ComputedRefImpl {
     }
     // 類的屬性訪問器，底層就是  Object.defineProperty
     get value() {
-        // 做依賴收集
-        trackEffect(this.dep);
+        if (isTracking()) {
+            // 做依賴收集
+            trackEffects(this.dep);
+        }
         if (this._dirty) {
             this._dirty = false;
             this._value = this.effect.run();
